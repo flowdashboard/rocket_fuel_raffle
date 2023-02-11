@@ -1,5 +1,5 @@
 import streamlit as st
-from gsheetsdb import connect
+import gspread
 import pandas as pd
 
 st.set_page_config("Rocket Fuel Raffle",
@@ -8,26 +8,23 @@ st.set_page_config("Rocket Fuel Raffle",
                    layout="centered")
 
 # Create a connection object.
-conn = connect()
+gc = gspread.service_account()
 
 # Read secret for google docs access
 sheet_url = st.secrets["public_gsheets_url"]
 
-# Perform SQL query on the Google Sheet.
-# Uses st.cache_data to only rerun when the query changes or after 5 sec.
-@st.cache_data(ttl=5)
-def run_query(query):
-    rows = conn.execute(query, headers=1)
-    rows = rows.fetchall()
-    return rows
+# Uses st.cache_data to only rerun when the query changes or after 10 sec.
+@st.cache_data(ttl=10)
+def load_data(query):
+    sheet = gc.open_by_url(sheet_url).sheet1
+    df = pd.DataFrame(sheet.get_all_records())
+    return df
 
 if __name__ == "__main__":
     st.title('🚀 Leaderboard 🚀')
 
     data_load_state = st.text('Loading data...')
-    rows = run_query(f'SELECT * FROM "{sheet_url}"')
-    df = pd.DataFrame(rows)
+    df = load_data()
     data_load_state.empty()
     
-    print(rows)   
     df.show()
